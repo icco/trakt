@@ -1,7 +1,6 @@
 # trakt
 
 [![Go Reference](https://pkg.go.dev/badge/github.com/icco/trakt.svg)](https://pkg.go.dev/github.com/icco/trakt)
-[![Go Report Card](https://goreportcard.com/badge/github.com/icco/trakt)](https://goreportcard.com/report/github.com/icco/trakt)
 [![Test Go](https://github.com/icco/trakt/actions/workflows/test.yml/badge.svg)](https://github.com/icco/trakt/actions/workflows/test.yml)
 
 A minimal Go client for the [Trakt](https://trakt.tv) API: OAuth device flow, token refresh, and the `sync/*` endpoints.
