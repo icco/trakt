@@ -25,6 +25,6 @@ release:
   mode: replace
   footer: |
     ---
-    Install with `go get github.com/icco/trakt@{{ .Tag }}`.
+    Install with `go get go.icco.me/trakt@{{ .Tag }}`.
 
     **Full Changelog**: https://github.com/icco/trakt/compare/{{ .PreviousTag }}...{{ .Tag }}

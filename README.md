@@ -1,6 +1,6 @@
 # trakt
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/icco/trakt.svg)](https://pkg.go.dev/github.com/icco/trakt)
+[![Go Reference](https://pkg.go.dev/badge/go.icco.me/trakt.svg)](https://pkg.go.dev/go.icco.me/trakt)
 [![Test Go](https://github.com/icco/trakt/actions/workflows/test.yml/badge.svg)](https://github.com/icco/trakt/actions/workflows/test.yml)
 
 A minimal Go client for the [Trakt](https://trakt.tv) API: OAuth device flow, token refresh, and the `sync/*` endpoints.
@@ -8,7 +8,7 @@ A minimal Go client for the [Trakt](https://trakt.tv) API: OAuth device flow, to
 To use this you need a Trakt API app. Create one at [trakt.tv/oauth/applications](https://trakt.tv/oauth/applications) and set its redirect URI to `urn:ietf:wg:oauth:2.0:oob` if you plan to use the device flow.
 
 ```
-go get github.com/icco/trakt
+go get go.icco.me/trakt
 ```
 
 ## Usage
