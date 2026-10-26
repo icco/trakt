@@ -1,5 +1,5 @@
 // Package trakt is a minimal Trakt API client: OAuth device flow, token
-// refresh, and the sync endpoints the recommender uses as ranking signals.
+// refresh, the sync endpoints, and a user's public ratings.
 package trakt
 
 import (
@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -38,6 +39,7 @@ func NewClient(clientID, clientSecret string) *Client {
 // IDs holds the external identifiers Trakt returns for a title.
 type IDs struct {
 	Trakt int    `json:"trakt"`
+	Slug  string `json:"slug"`
 	IMDb  string `json:"imdb"`
 	TMDb  int    `json:"tmdb"`
 	TVDb  int    `json:"tvdb"`
@@ -50,12 +52,14 @@ type Media struct {
 	IDs   IDs    `json:"ids"`
 }
 
-// SyncRow is one item from a sync/* endpoint. Exactly one of Movie/Show is set;
-// Rating is populated for ratings endpoints.
+// SyncRow is one item from a sync/* or users/*/ratings endpoint. Exactly one
+// of Movie/Show is set; an episode rating sets Show to the episode's show.
+// Rating and RatedAt are populated for ratings endpoints.
 type SyncRow struct {
-	Rating int    `json:"rating"`
-	Movie  *Media `json:"movie"`
-	Show   *Media `json:"show"`
+	Rating  int       `json:"rating"`
+	RatedAt time.Time `json:"rated_at"`
+	Movie   *Media    `json:"movie"`
+	Show    *Media    `json:"show"`
 }
 
 // DeviceCode is the response from the device-code endpoint.
@@ -151,13 +155,28 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*Token,
 
 // Sync GETs a sync/* endpoint (e.g. "sync/watched/movies") with the access token.
 func (c *Client) Sync(ctx context.Context, accessToken, path string) ([]SyncRow, error) {
+	return c.getRows(ctx, accessToken, path)
+}
+
+// UserRatings GETs users/<username>/ratings/<path>, where path is a type and
+// optional rating such as "movies/10", "shows", or "episodes". A public
+// profile needs only the client ID, so no access token is sent.
+func (c *Client) UserRatings(ctx context.Context, username, path string) ([]SyncRow, error) {
+	return c.getRows(ctx, "", "users/"+url.PathEscape(username)+"/ratings/"+path)
+}
+
+// getRows GETs path and decodes a list of rows, sending accessToken as a
+// bearer token when it is set.
+func (c *Client) getRows(ctx context.Context, accessToken, path string) ([]SyncRow, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.BaseURL+"/"+path, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Set("trakt-api-version", apiVersion)
 	req.Header.Set("trakt-api-key", c.clientID)
-	req.Header.Set("Authorization", "Bearer "+accessToken)
+	if accessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+accessToken)
+	}
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err

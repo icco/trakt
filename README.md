@@ -62,9 +62,23 @@ for _, row := range rows {
 
 Useful paths: `sync/watched/movies`, `sync/watched/shows`, `sync/ratings/movies`, `sync/ratings/shows`, `sync/watchlist/movies`, `sync/watchlist/shows`.
 
+### Reading a public profile's ratings
+
+A public profile needs only the client ID, so skip the device flow and pass an empty secret.
+
+```go
+c := trakt.NewClient(clientID, "")
+rows, err := c.UserRatings(ctx, "alice", "movies/10")
+for _, row := range rows {
+  fmt.Println(row.Movie.Title, row.Movie.IDs.Slug, row.RatedAt)
+}
+```
+
+The path is a type plus an optional rating: `movies`, `shows`, `episodes`, `movies/10`. An episode rating sets `Show` to the episode's show.
+
 ## Notes
 
-- **Read-only, and only the endpoints I needed.** This covers auth plus `sync/*` reads. There is no search, no scrobbling, no list management, no pagination. PRs welcome.
+- **Read-only, and only the endpoints I needed.** This covers auth, `sync/*` reads, and public `users/*/ratings` reads. There is no search, no scrobbling, no list management, no pagination. PRs welcome.
 - **`PollForToken` returns `(nil, nil)` while the user has not yet approved.** Trakt signals that state with an HTTP 400, which is the normal case for most of the flow, so treating it as an error would mean aborting on the expected path. A `nil` token with a `nil` error means "keep polling"; any other failure comes back as an error.
 - **`Sync` returns rows where exactly one of `Movie`/`Show` is set.** Which one depends on the endpoint you asked for. `Rating` is only meaningful on `sync/ratings/*`.
 - **`BaseURL` is exported** so you can point the client at a test server.

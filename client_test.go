@@ -119,6 +119,63 @@ func TestSyncSurfacesHTTPError(t *testing.T) {
 	}
 }
 
+func TestUserRatingsNeedsNoToken(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("trakt-api-key"); got != "cid" {
+			t.Errorf("trakt-api-key = %q, want cid", got)
+		}
+		if got := r.Header.Get("trakt-api-version"); got != "2" {
+			t.Errorf("trakt-api-version = %q, want 2", got)
+		}
+		if got := r.Header.Get("Authorization"); got != "" {
+			t.Errorf("Authorization = %q, want none for a public profile", got)
+		}
+		if got := r.URL.EscapedPath(); got != "/users/ada%20lovelace/ratings/episodes" {
+			t.Errorf("path = %q, want the username escaped", got)
+		}
+		_, _ = w.Write([]byte(`[{"rated_at":"2018-12-17T23:37:43.000Z","rating":10,"type":"episode",
+			"episode":{"season":1,"number":14},
+			"show":{"title":"Broad City","year":2014,"ids":{"trakt":46031,"slug":"broad-city","tmdb":39340}}}]`))
+	}))
+	defer srv.Close()
+
+	rows, err := newTestClient(srv).UserRatings(t.Context(), "ada lovelace", "episodes")
+	if err != nil {
+		t.Fatalf("UserRatings: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("got %d rows, want 1", len(rows))
+	}
+	r := rows[0]
+	if r.Movie != nil || r.Show == nil || r.Show.Title != "Broad City" || r.Show.IDs.Slug != "broad-city" || r.Show.IDs.TMDb != 39340 {
+		t.Errorf("row = %+v, want the episode's show with its slug and tmdb id", r)
+	}
+	if r.Rating != 10 || !r.RatedAt.Equal(time.Date(2018, 12, 17, 23, 37, 43, 0, time.UTC)) {
+		t.Errorf("Rating = %d, RatedAt = %v", r.Rating, r.RatedAt)
+	}
+}
+
+func TestUserRatingsSurfacesErrors(t *testing.T) {
+	t.Parallel()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/private/ratings/movies/10") {
+			http.Error(w, `{"error":"private"}`, http.StatusUnauthorized)
+			return
+		}
+		_, _ = w.Write([]byte(`{"not":"an array"}`))
+	}))
+	defer srv.Close()
+
+	c := newTestClient(srv)
+	if _, err := c.UserRatings(t.Context(), "private", "movies/10"); err == nil || !strings.Contains(err.Error(), "401") {
+		t.Errorf("private profile error = %v, want one naming the 401", err)
+	}
+	if _, err := c.UserRatings(t.Context(), "alice", "movies/10"); err == nil {
+		t.Error("malformed JSON = nil, want an error")
+	}
+}
+
 func TestSyncRejectsMalformedJSON(t *testing.T) {
 	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
